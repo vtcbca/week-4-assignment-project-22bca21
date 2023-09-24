@@ -1,0 +1,382 @@
+import sqlite3
+con=sqlite3.connect('c:\\sqlite3\\contact_management_system.db')
+cur=con.cursor()
+
+##create tables
+
+def create_table():
+    try:
+        cur.execute("CREATE TABLE CONTACT(fname text,\
+            lname text,\
+            email text,\
+            contact number,\
+            city text);")
+        cur.execute("create table insert_log(\
+            fname text,\
+            lname text,\
+            contact number,\
+            email text,\
+            city text,\
+            insert_time text);")
+        cur.execute("create table update_log(\
+            old_fname text,\
+            new_fname text,\
+            old_lname text,\
+            new_lname text,\
+            old_contact number,\
+            new_contact number,\
+            old_email text,\
+            new_email text,\
+            old_city text,\
+            new_city text,\
+            update_time text);")
+        cur.execute("create table delete_log(\
+            fname text,\
+            lname text,\
+            contact number,\
+            email text,\
+            city text,\
+            delete_time text);")
+    except error as e:
+        print(e)
+create_table()
+
+##create trigger for validate email and contact number
+
+cur.execute("CREATE TRIGGER IF NOT EXISTS validate_email_before_insert\
+   BEFORE INSERT ON CONTACT\
+   BEGIN\
+   SELECT\
+      CASE\
+          WHEN NEW.email NOT LIKE '%@%.%' THEN\
+          RAISE(ABORT,'Invalid email address')\
+          WHEN length(new.contact)>10 OR length(new.contact)<10 THEN\
+          RAISE(ABORT,'Invalid contact number,input contact number in proper length')\
+      END;\
+    END;")
+<sqlite3.Cursor at 0x2ded407af40>
+create trigger for maintain log for insert,update and delete data information
+cur.execute("CREATE TRIGGER IF NOT EXISTS insert_log AFTER INSERT ON CONTACT\
+            BEGIN\
+                INSERT INTO insert_log VALUES (new.fname,new.lname,new.email,new.contact,new.city,datetime('now'));\
+            END;")
+<sqlite3.Cursor at 0x2ded407af40>
+cur.execute("CREATE TRIGGER IF NOT EXISTS update_log AFTER UPDATE ON CONTACT\
+            BEGIN\
+                INSERT INTO update_log VALUES\
+                (old.fname,new.fname,old.lname,new.lname,old.contact,new.contact,old.email,new.email,old.city,new.city,datetime('now'));\
+            END;")
+<sqlite3.Cursor at 0x2ded407af40>
+cur.execute("CREATE TRIGGER IF NOT EXISTS delete_log AFTER DELETE ON CONTACT\
+            BEGIN\
+                INSERT INTO delete_log VALUES (old.fname,old.lname,old.contact,old.email,old.city,datetime('now'));\
+            END;")
+<sqlite3.Cursor at 0x2ded407af40>
+
+##Testing of all triggers........
+
+#record successfully instert because of correct email formate
+
+cur.execute("INSERT INTO CONTACT VALUES('GORI','RADHA','radhag@kanha.com',9900099000,'SURAT'),\
+('DAYAL','DEV','devdayal@gmail.com',9909099090,'DWARKA'),\
+('RAMA','SITA','sitaram@gmail.com',8909089090,'KASHI'),\
+('DAYA','RAM','dayaram@yahoo.com',9109091090,'MATHURA')")
+<sqlite3.Cursor at 0x2ded407af40>
+
+##it shows error because of wrong email formate and impropper contact number
+
+cur.execute("INSERT INTO CONTACT VALUES('VISHV','NATH','vnath1@gmailcom',8909089090,'VRINDAVAN')")
+---------------------------------------------------------------------------
+IntegrityError                            Traceback (most recent call last)
+Cell In[9], line 1
+----> 1 cur.execute("INSERT INTO CONTACT VALUES('VISHV','NATH','vnath1@gmailcom',8909089090,'VRINDAVAN')")
+
+IntegrityError: Invalid email address
+
+cur.execute("INSERT INTO CONTACT VALUES('VISHV','NATH','vnath1@gmail.com',890908909,'VRINDAVAN')")
+---------------------------------------------------------------------------
+IntegrityError                            Traceback (most recent call last)
+Cell In[10], line 1
+----> 1 cur.execute("INSERT INTO CONTACT VALUES('VISHV','NATH','vnath1@gmail.com',890908909,'VRINDAVAN')")
+
+IntegrityError: Invalid contact number,input contact number in proper length
+
+##printing all inserted records
+
+cur.execute("SELECT * FROM CONTACT")
+r=cur.fetchall()
+h=['fname','lname','email','contact','city']
+print(f'{h[0]: <10}{h[1]: <10}{h[2]: <20}{h[3]: <15}{h[4]}')
+for i in r:
+    print(f'{i[0]: <10}{i[1]: <10}{i[2]: <20}{i[3]: <15}{i[4]}'
+
+OUTPUT:
+fname     lname     email               contact        city
+GORI      RADHA     radhag@kanha.com    9900099000     SURAT
+DAYAL     DEV       devdayal@gmail.com  9909099090     DWARKA
+RAMA      SITA      sitaram@gmail.com   8909089090     KASHI
+DAYA      RAM       dayaram@yahoo.com   9109091090     MATHURA
+
+##records in inser_log table
+
+cur.execute("SELECT * FROM insert_log")
+record=cur.fetchall()
+h=['fname','lname','email','contact','city','insert_time']
+print(f'{h[0]: <10}{h[1]: <10}{h[2]: <20}{h[3]: <15}{h[4]: <10}{h[5]}')
+for i in record:
+    print(f'{i[0]: <10}{i[1]: <10}{i[2]: <20}{i[3]: <15}{i[4]: <10}{i[5]}')
+
+OUTPUT:
+fname     lname     email               contact        city      insert_time
+GORI      RADHA     radhag@kanha.com    9900099000     SURAT     2023-08-14 12:44:15
+DAYAL     DEV       devdayal@gmail.com  9909099090     DWARKA    2023-08-14 12:44:15
+RAMA      SITA      sitaram@gmail.com   8909089090     KASHI     2023-08-14 12:44:15
+DAYA      RAM       dayaram@yahoo.com   9109091090     MATHURA   2023-08-14 12:44:15
+
+
+##update 1 record
+
+cur.execute("UPDATE CONTACT SET city='GOKUL' WHERE fname='GORI'")
+cur.execute("UPDATE CONTACT SET fname='RAM' WHERE fname='RAMA'")
+<sqlite3.Cursor at 0x2ded407af40>
+
+##records in update_log table
+
+cur.execute("SELECT * FROM update_log")
+record=cur.fetchall()
+h=['oldfname','newfname','oldlname','newlname','oldcontact','newcontact','oldemail','newemail','oldcity','newcity','update_time']
+print(f'{h[0]: <9}{h[1]: <9}{h[2]: <9}{h[3]: <9}{h[4]: <11}{h[5]: <11}{h[6]: <17}{h[7]: <17}{h[8]: <8}{h[9]: <8}{h[10]}')
+for i in record:
+    print(f'{i[0]: <9}{i[1]: <9}{i[2]: <9}{i[3]: <9}{i[4]: <11}{i[5]: <11}{i[6]: <17}{i[7]: <17}{i[8]: <8}{i[9]: <8}{i[10]}')
+
+OUTPUT:
+oldfname newfname oldlname newlname oldcontact newcontact oldemail         newemail         oldcity newcity update_time
+GORI     GORI     RADHA    RADHA    9900099000 9900099000 radhag@kanha.com radhag@kanha.com SURAT   GOKUL   2023-08-14 12:44:28
+RAMA     RAM      SITA     SITA     8909089090 8909089090 sitaram@gmail.comsitaram@gmail.comKASHI   KASHI   2023-08-14 12:44:28
+
+##delete 1 record
+
+cur.execute("DELETE FROM CONTACT WHERE fname='DAYA'")
+<sqlite3.Cursor at 0x2ded407af40>
+
+##records in delete_log table
+
+cur.execute("SELECT * FROM delete_log")
+record=cur.fetchall()
+h=['fname','lname','contact','email','city','delete_time']
+print(f'{h[0]: <10}{h[1]: <10}{h[2]: <15}{h[3]: <20}{h[4]: <10}{h[5]}')
+for i in record:
+    print(f'{i[0]: <10}{i[1]: <10}{i[2]: <15}{i[3]: <20}{i[4]: <10}{i[5]}')
+
+OUTPUT:
+fname     lname     contact        email               city      delete_time
+DAYA      RAM       9109091090     dayaram@yahoo.com   MATHURA   2023-08-14 12:44:34
+con.commit()
+
+##CREATING MAIN PART OF CONTACT MANAGEMENT SYSTEM
+
+def insert():
+    try:
+        print('\nEnter your new contact detail...')
+        l=[]
+        firstname=input("Enter first name:")
+        lastname=input("Enter last name:")
+        email=input("Enter email address:")
+        contact=int(input("Enter contact number:"))
+        city=input("Enter city:")
+        r=(firstname,lastname,email,contact,city)
+        l.append(r)   
+        q="INSERT INTO CONTACT VALUES(?,?,?,?,?)"
+        cur.executemany(q,l)
+        print('Record Inserted successfully :)\n')
+    except error as e:
+        print(e)
+def update():
+    try:
+        print("\nWhich column you want to update?\n1=firstname,2=lastname,3=email,4=contact,5=city")
+        c=int(input("Enter your choice number:"))
+        if c==1:
+            old=input("Enter your old First name:")
+            new=input("Enter your new First name:")
+            q="update contact set fname='"+new+"' where fname='"+old+"'"
+        elif c==2:
+            old=input("Enter your old Last name:")
+            new=input("Enter your new Last name:")
+            q="update contact set lname='"+new+"' where lname='"+old+"'"
+        elif c==3:
+            old=input("Enter your old Email name:")
+            new=input("Enter your new Email:")
+            q="update contact set email='"+new+"' where email='"+old+"'"
+        elif c==4:
+            old=input("Enter your old Contact number:")
+            new=input("Enter your new Contact number:")
+            q='update contact set contact='+new+' where contact='+old
+        elif c==5:
+            old=input("Enter your old City name:")
+            new=input("Enter your new City name:")
+            q="update contact set city='"+new+"' where city='"+old+"'"
+        else:
+            print('Invalid choice....!')
+        cur.execute(q)
+        print('Record Updated successfully :)\n')
+    except error as e:
+        print(e)
+def delete():
+    try:
+        print("\nWhich contact you want to delete...?")
+        cur.execute("SELECT * FROM CONTACT")
+        r=cur.fetchall()
+        h=['fname','lname','email','contact','city']
+        print(f'{h[0]: <10}{h[1]: <10}{h[2]: <20}{h[3]: <15}{h[4]}')
+        for i in r:
+            print(f'{i[0]: <10}{i[1]: <10}{i[2]: <20}{i[3]: <15}{i[4]}')
+        c=input('Enter the fname of contact which you want to delete:')
+        q="DELETE FROM CONTACT WHERE fname='"+c+"'"
+        cur.execute(q)
+        print()
+    except error as e:
+        print(e)
+def search():
+    try:
+        print()
+        s=input("Enter the first name of contact which you want to search:")
+        q="SELECT * FROM CONTACT WHERE fname='"+s+"'"
+        cur.execute(q)
+        r=cur.fetchall()
+        print(r)
+        print()
+    except error as e:
+        print(e)
+def pprint():
+    try:
+        cur.execute("SELECT * FROM CONTACT")
+        r=cur.fetchall()
+        h=['fname','lname','email','contact','city']
+        print(f'{h[0]: <10}{h[1]: <10}{h[2]: <20}{h[3]: <15}{h[4]}')
+        for i in r:
+            print(f'{i[0]: <10}{i[1]: <10}{i[2]: <20}{i[3]: <15}{i[4]}') 
+    except error as e:
+        print(e)
+print('\nWhat you want to do with your contacts...?')
+print(" 1.Insert new contact\n 2.Update contact\n 3.Delete contact\n 4.Search contact\n 5.Print all contact detail")
+x=int(input("Enter your choice number:"))
+while (x!=0):
+    if x==1:
+        insert()
+    elif x==2:
+        update()
+    elif x==3:
+        delete()
+    elif x==4:
+        search()
+    elif x==5:
+        pprint()
+    else:
+        print("Invalide choice....!")
+    x=int(input(" 1.Insert new contact\n 2.Update contact\n 3.Delete contact\n 4.Search contact\n 5.Print all contact detail\
+                \nIf you want to continue...then re-enter your choice number end if don't want t
+
+OUTPUT:
+What you want to do with your contacts...?
+ 1.Insert new contact
+ 2.Update contact
+ 3.Delete contact
+ 4.Search contact
+ 5.Print all contact detail
+Enter your choice number:5
+fname     lname     email               contact        city
+GORI      RADHA     radhag@kanha.com    9900099000     GOKUL
+DAYAL     DEV       devdayal@gmail.com  9909099090     DWARKA
+RAM       SITA      sitaram@gmail.com   8909089090     KASHI
+ 1.Insert new contact
+ 2.Update contact
+ 3.Delete contact
+ 4.Search contact
+ 5.Print all contact detail                
+If you want to continue...then re-enter your choice number end if don't want to continue then enter 0:1
+
+Enter your new contact detail...
+Enter first name:hetvi
+Enter last name:dd
+Enter email address:hd@gmail.com
+Enter contact number:8887776665
+Enter city:surat
+Record Inserted successfully :)
+
+ 1.Insert new contact
+ 2.Update contact
+ 3.Delete contact
+ 4.Search contact
+ 5.Print all contact detail                
+If you want to continue...then re-enter your choice number end if don't want to continue then enter 0:5
+fname     lname     email               contact        city
+GORI      RADHA     radhag@kanha.com    9900099000     GOKUL
+DAYAL     DEV       devdayal@gmail.com  9909099090     DWARKA
+RAM       SITA      sitaram@gmail.com   8909089090     KASHI
+hetvi     dd        hd@gmail.com        8887776665     surat
+ 1.Insert new contact
+ 2.Update contact
+ 3.Delete contact
+ 4.Search contact
+ 5.Print all contact detail                
+If you want to continue...then re-enter your choice number end if don't want to continue then enter 0:2
+
+Which column you want to update?
+1=firstname,2=lastname,3=email,4=contact,5=city
+Enter your choice number:2
+Enter your old Last name:dd
+Enter your new Last name:patel
+Record Updated successfully :)
+
+ 1.Insert new contact
+ 2.Update contact
+ 3.Delete contact
+ 4.Search contact
+ 5.Print all contact detail                
+If you want to continue...then re-enter your choice number end if don't want to continue then enter 0:5
+fname     lname     email               contact        city
+GORI      RADHA     radhag@kanha.com    9900099000     GOKUL
+DAYAL     DEV       devdayal@gmail.com  9909099090     DWARKA
+RAM       SITA      sitaram@gmail.com   8909089090     KASHI
+hetvi     patel     hd@gmail.com        8887776665     surat
+ 1.Insert new contact
+ 2.Update contact
+ 3.Delete contact
+ 4.Search contact
+ 5.Print all contact detail                
+If you want to continue...then re-enter your choice number end if don't want to continue then enter 0:3
+
+Which contact you want to delete...?
+fname     lname     email               contact        city
+GORI      RADHA     radhag@kanha.com    9900099000     GOKUL
+DAYAL     DEV       devdayal@gmail.com  9909099090     DWARKA
+RAM       SITA      sitaram@gmail.com   8909089090     KASHI
+hetvi     patel     hd@gmail.com        8887776665     surat
+Enter the fname of contact which you want to delete:hetvi
+
+ 1.Insert new contact
+ 2.Update contact
+ 3.Delete contact
+ 4.Search contact
+ 5.Print all contact detail                
+If you want to continue...then re-enter your choice number end if don't want to continue then enter 0:5
+fname     lname     email               contact        city
+GORI      RADHA     radhag@kanha.com    9900099000     GOKUL
+DAYAL     DEV       devdayal@gmail.com  9909099090     DWARKA
+RAM       SITA      sitaram@gmail.com   8909089090     KASHI
+ 1.Insert new contact
+ 2.Update contact
+ 3.Delete contact
+ 4.Search contact
+ 5.Print all contact detail                
+If you want to continue...then re-enter your choice number end if don't want to continue then enter 0:4
+
+Enter the first name of contact which you want to search:RAM
+[('RAM', 'SITA', 'sitaram@gmail.com', 8909089090, 'KASHI')]
+
+ 1.Insert new contact
+ 2.Update contact
+ 3.Delete contact
+ 4.Search contact
+ 5.Print all contact detail                
+If you want to continue...then re-enter your choice number end if don't want to continue then enter 0:0
